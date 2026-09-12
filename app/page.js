@@ -29,7 +29,7 @@ export default function VisionHubLogin() {
       return;
     }
 
-    savePrivateSession(result.profile);
+    savePrivateSession(result.profile, result.sessionToken);
     window.location.assign(result.profile?.role === "admin" ? "/companies" : "/client");
   }
 
