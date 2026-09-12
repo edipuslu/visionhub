@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { findPortalUser, normalizeLoginId, verifyPassword } from "../../../lib/portalStore";
+import { findPortalUser, normalizeLoginId, signSession, verifyPassword } from "../../../lib/portalStore";
 
 export async function POST(request) {
   const { loginId, password } = await request.json().catch(() => ({}));
@@ -15,15 +15,18 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid VisionHub ID or password." }, { status: 401 });
   }
 
+  const profile = {
+    id: user.id || null,
+    loginId: normalizedLoginId,
+    email: user.email || `${normalizedLoginId}@visionhub.local`,
+    fullName: user.fullName || null,
+    role: user.role === "admin" ? "admin" : "client",
+    companyId: user.companyId || null,
+    company: user.company || null,
+  };
+
   return NextResponse.json({
-    profile: {
-      id: user.id || null,
-      loginId: normalizedLoginId,
-      email: user.email || `${normalizedLoginId}@visionhub.local`,
-      fullName: user.fullName || null,
-      role: user.role === "admin" ? "admin" : "client",
-      companyId: user.companyId || null,
-      company: user.company || null,
-    },
+    profile,
+    sessionToken: signSession(profile),
   });
 }
