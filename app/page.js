@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import { supabase } from "../lib/supabase";
+import { savePrivateSession } from "../lib/session";
 
 export default function VisionHubLogin() {
   async function handleLogin(event) {
@@ -17,31 +17,20 @@ export default function VisionHubLogin() {
       return;
     }
 
-    if (!supabase) {
-      alert("Supabase is not configured yet. Add your environment variables.");
-      return;
-    }
-
-    const email = loginId.includes("@")
-      ? loginId
-      : `${loginId.replace(/[^a-z0-9._-]/g, "-")}@visionhub.local`;
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ loginId, password }),
     });
+    const result = await response.json().catch(() => ({}));
 
-    if (error) {
-      alert(error.message);
+    if (!response.ok) {
+      alert(result.error || "Invalid VisionHub ID or password.");
       return;
     }
 
-    const userId = data.user?.id;
-    const { data: profile } = userId
-      ? await supabase.from("profiles").select("role").eq("id", userId).maybeSingle()
-      : { data: null };
-
-    window.location.assign(profile?.role === "admin" ? "/companies" : "/client");
+    savePrivateSession(result.profile);
+    window.location.assign(result.profile?.role === "admin" ? "/companies" : "/client");
   }
 
   return (
