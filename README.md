@@ -2,34 +2,47 @@
 
 Recovered editable source for `visionhub.usludigital.com`.
 
-## What Was Recovered
+## What Works Now
 
 - Next.js app structure
-- Public landing/login page
-- Admin company route at `/companies`
-- Client route at `/client`
+- Public landing/login page and `/login` route
 - Server-side VisionHub ID login verification
-- Shared session helpers
-- Visual styling reconstructed from the deployed Vercel build
+- Signed admin/client session tokens
+- Admin company dashboard at `/companies`
+- Admin-only API to create companies
+- Admin-only API to create client/admin logins
+- Password hashing on the server before saving logins
+- Supabase schema for `companies` and `portal_users`
+- Emergency environment-user fallback for login recovery
 
 ## Important Security Note
 
-The deployed browser bundle exposed private fallback login data. Those values are intentionally not committed here. Rotate any old passwords before redeploying.
+Do not commit real passwords, service role keys, or session secrets. Keep them in the hosting provider environment variables only.
 
-## Login Configuration
+## Database Setup
 
-Login is handled by `POST /api/login`. It checks the server-only `VISIONHUB_USERS_JSON` environment variable, so passwords are not bundled into the browser.
+Run `supabase/schema.sql` in the Supabase SQL editor. It creates:
 
-Use this shape in your host environment variables:
+- `companies`
+- `portal_users`
+
+The app writes to those tables only from server-side API routes using `SUPABASE_SERVICE_ROLE_KEY`.
+
+## Required Hosting Environment Variables
+
+Add these in Vercel or your hosting provider:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+VISIONHUB_SESSION_SECRET=use-a-long-random-secret
+```
+
+For emergency login recovery, keep one admin user in `VISIONHUB_USERS_JSON` until the first database admin is created:
 
 ```json
 [
-  {
-    "loginId": "vento01",
-    "role": "client",
-    "company": "Vento",
-    "passwordSha256": "replace-with-sha256-hash"
-  },
   {
     "loginId": "admin",
     "role": "admin",
@@ -38,19 +51,27 @@ Use this shape in your host environment variables:
 ]
 ```
 
-`passwordSha256` is preferred. A plain `password` field is also supported for migration, but do not use it long term.
-
 To generate a SHA-256 password hash locally:
 
 ```bash
 printf 'your-password' | shasum -a 256
 ```
 
-## Setup
+## Admin Workflow
+
+1. Log in at `/login` as an admin.
+2. Open `/companies`.
+3. Create a company.
+4. Create client or admin logins for that company.
+5. Give the client their VisionHub ID and temporary password.
+
+New companies and logins are saved to Supabase immediately. No redeploy is needed after the dashboard is configured.
+
+## Local Setup
 
 1. Copy `.env.example` to `.env.local`.
-2. Add `VISIONHUB_USERS_JSON` with your real login IDs and password hashes.
-3. Add Supabase environment variables only if later pages need Supabase data.
+2. Add the Supabase and session secret values.
+3. Run the SQL in `supabase/schema.sql`.
 4. Install dependencies.
 5. Run the app.
 
@@ -61,4 +82,4 @@ npm run dev
 
 ## Deployment
 
-In Vercel or your hosting provider, add `VISIONHUB_USERS_JSON` as a server-only environment variable, redeploy the site, then test each VisionHub ID at `/login` or `/` depending on the deployed route alias.
+Push to GitHub, let the host redeploy, add the required environment variables, run the Supabase schema once, then create the first database admin login from the dashboard.
